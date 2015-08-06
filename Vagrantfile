@@ -78,7 +78,8 @@ Vagrant.configure("2") do |config|
        node_ip = minion_ips[n]
        node.vm.hostname = "atomic-minion#{node_index}"
        node.hostmanager.aliases = %W(atomic-minion#{node_index}.atomic-demo.com)
-       node.vm.network "private_network", ip: "#{node_ip}", libvirt__network_name: "atomic-demo0", libvirt__dhcp_enabled: false
+       node.vm.network "private_network", ip: "#{node_ip}", auto_config:false 
+                                       #libvirt__network_name: "atomic-demo0", libvirt__dhcp_enabled: false
        node.vm.provision "shell" do |s|
          s.args = [node_index, node_ip, node.vm.hostname]
          s.inline = <<-EOT
@@ -111,8 +112,8 @@ Vagrant.configure("2") do |config|
   config.vm.define "atomic-master" do |master|
      master.vm.hostname = "atomic-master"
      master.hostmanager.aliases = %W(atomic-master.atomic-demo.com)
-     master.vm.network "private_network", ip: master_ip, libvirt__network_name: "atomic-demo0", libvirt__dhcp_enabled: false
-     #master.vm.provision "master-shell", type: "shell", run: "always" do |s|
+     master.vm.network "private_network", ip: master_ip, auto_config:false
+           #libvirt__network_name: "atomic-demo0", libvirt__dhcp_enabled: false
      master.vm.provision "shell" do |s|
          s.args = [ master_ip, master.vm.hostname]
          s.inline = <<-EOT
