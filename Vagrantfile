@@ -35,7 +35,7 @@ Vagrant.configure("2") do |config|
 # Box configuration
 #
   config.vm.box_check_update = false
-  config.vm.synced_folder './', '/var/vagrant', type: 'rsync'
+  config.vm.synced_folder './', '/var/vagrant', create:true
 
 #
 # virtualbox provider common settings
@@ -45,14 +45,17 @@ Vagrant.configure("2") do |config|
     override.vm.box_url="http://dl.fedoraproject.org/pub/fedora/linux/releases/22/Cloud/x86_64/Images/Fedora-Cloud-Atomic-Vagrant-22-20150521.x86_64.vagrant-virtualbox.box"
     vb.gui = false
     vb.customize ["modifyvm", :id, "--memory", "1512", "--cpus", "2"]
+    vb.customize ['storagectl', :id, '--name', 'SATA Controller', '--add', 'sata']
     # Add Second Drive
     if ENV["VBOX_VM_PATH"]
       vb_disk_path = ENV["VBOX_VM_PATH"] + :vm + "/" + "atomic-box-disk2" + ".vmdk"
     else
       vb_disk_path = Dir.pwd() + "/" + "atomic-box-disk2" + ".vmdk"
     end
-    vb.customize ['createhd', '--filename', vb_disk_path, '--size', 500 * 1024]
-    vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', vb_disk_path] 
+    unless File.exist?(vb_disk_path )
+      vb.customize ['createhd', '--filename', vb_disk_path, '--size', 5 * 1024]
+    end
+    vb.customize ['storageattach', :id, '--storagectl','SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', vb_disk_path] 
   end
 
 #
