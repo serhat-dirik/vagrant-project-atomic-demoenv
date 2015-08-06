@@ -8,6 +8,9 @@
 # 192.168.133.3     atomic-minion1.atomic-demo.com  atomic-minion1                                                          
 # 192.168.133.4     atomic-minion2.atomic-demo.com  atomic-minion2
 
+# Require a recent version of vagrant otherwise some have reported errors setting host names on boxes
+Vagrant.require_version ">= 1.6.2"
+
 require 'vagrant-hostmanager'
 
 Vagrant.configure("2") do |config|
@@ -32,14 +35,14 @@ Vagrant.configure("2") do |config|
 # Box configuration
 #
   config.vm.box_check_update = false
-  config.vm.box = "atomic"
-  config.vm.box_url="http://dl.fedoraproject.org/pub/fedora/linux/releases/22/Cloud/x86_64/Images/Fedora-Cloud-Atomic-Vagrant-22-20150521.x86_64.vagrant-libvirt.box"
   config.vm.synced_folder './', '/var/vagrant', type: 'rsync'
 
 #
 # virtualbox provider common settings
 #
-  config.vm.provider "virtualbox" do |vb|
+  config.vm.provider "virtualbox" do |vb, override|
+    override.vm.box = "atomic"
+    override.vm.box_url="http://dl.fedoraproject.org/pub/fedora/linux/releases/22/Cloud/x86_64/Images/Fedora-Cloud-Atomic-Vagrant-22-20150521.x86_64.vagrant-virtualbox.box"
     vb.gui = false
     vb.customize ["modifyvm", :id, "--memory", "1512", "--cpus", "2"]
     # Add Second Drive
@@ -55,7 +58,9 @@ Vagrant.configure("2") do |config|
 #
 # libvirt provider common settings
 #
-  config.vm.provider "libvirt" do |libvirt|
+  config.vm.provider "libvirt" do |libvirt, override|
+    override.vm.box = "atomic"
+    override.vm.box_url="http://dl.fedoraproject.org/pub/fedora/linux/releases/22/Cloud/x86_64/Images/Fedora-Cloud-Atomic-Vagrant-22-20150521.x86_64.vagrant-libvirt.box"
     libvirt.driver = "kvm"
     libvirt.memory = 1512
     libvirt.cpus = 2
