@@ -10,8 +10,32 @@
 
 # Require a recent version of vagrant otherwise some have reported errors setting host names on boxes
 Vagrant.require_version ">= 1.6.2"
-
+#Required Modules 
+require 'vagrant-atomic'
+require 'rbconfig' 
 require 'vagrant-hostmanager'
+#OS Detection
+def os
+    @os ||= (
+      host_os = RbConfig::CONFIG['host_os']
+      case host_os
+      when /mswin|msys|mingw|cygwin|bccwin|wince|emc/
+        :windows
+      when /darwin|mac os/
+        :macosx
+      when /linux/
+        :linux
+      when /solaris|bsd/
+        :unix
+      else
+        raise Error::WebDriverError, "unknown os: #{host_os.inspect}"
+      end
+    )
+end
+
+puts "Detected Host OS %s" % [os.to_s] 
+ 
+#Vagrant Configuration
 
 Vagrant.configure("2") do |config|
 # The number of minions to provision.
@@ -20,7 +44,16 @@ Vagrant.configure("2") do |config|
   master_ip = "192.168.133.2"
   minion_ip_base = "192.168.133."
   minion_ips = num_minions.times.collect { |n| minion_ip_base + "#{n+3}" }
-  minion_ips_str = minion_ips.join(",")
+  minion_names_str =""
+# On windows os there is a bug that prevents vagrant to run with cygwin rsync 
+# The lines below are a workarround for that problem
+  if  os.to_s == "windows"
+    if ENV["VAGRANT_DETECTED_OS"].nil?
+     ENV["VAGRANT_DETECTED_OS"] = os.to_s + " cygwin"
+    else 
+      ENV["VAGRANT_DETECTED_OS"] = ENV["VAGRANT_DETECTED_OS"].to_s  + " cygwin"
+    end  
+  end
 
 #
 # Plugins configuration
@@ -34,9 +67,11 @@ Vagrant.configure("2") do |config|
 #
 # Box configuration
 #
+  config.vm.box = "atomic"
   config.vm.box_check_update = false
-  config.vm.synced_folder './', '/var/vagrant', create:true
-
+# Default synchronization settings cause problems on windows + virtualbox combination
+  config.vm.synced_folder './', '/var/vagrant', disabled:true
+########################################################################################### 
 #
 # virtualbox provider common settings
 #
@@ -45,17 +80,8 @@ Vagrant.configure("2") do |config|
     override.vm.box_url="http://dl.fedoraproject.org/pub/fedora/linux/releases/22/Cloud/x86_64/Images/Fedora-Cloud-Atomic-Vagrant-22-20150521.x86_64.vagrant-virtualbox.box"
     vb.gui = false
     vb.customize ["modifyvm", :id, "--memory", "1512", "--cpus", "2"]
+    #only controller added
     vb.customize ['storagectl', :id, '--name', 'SATA Controller', '--add', 'sata']
-    # Add Second Drive
-    if ENV["VBOX_VM_PATH"]
-      vb_disk_path = ENV["VBOX_VM_PATH"] + :vm + "/" + "atomic-box-disk2" + ".vmdk"
-    else
-      vb_disk_path = Dir.pwd() + "/" + "atomic-box-disk2" + ".vmdk"
-    end
-    unless File.exist?(vb_disk_path )
-      vb.customize ['createhd', '--filename', vb_disk_path, '--size', 5 * 1024]
-    end
-    vb.customize ['storageattach', :id, '--storagectl','SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', vb_disk_path] 
   end
 
 #
@@ -70,67 +96,80 @@ Vagrant.configure("2") do |config|
     libvirt.storage :file, :size => '5G', :device => 'vdb'
   end
 
-
+###########################################################################################
 # Minion nodes
   num_minions.times do |n|
      config.vm.define "atomic-minion#{n+1}" do |node|
        node_index = n+1
        node_ip = minion_ips[n]
        node.vm.hostname = "atomic-minion#{node_index}"
+       minion_names_str = minion_names_str + " " + node.vm.hostname
        node.hostmanager.aliases = %W(atomic-minion#{node_index}.atomic-demo.com)
-       node.vm.network "private_network", ip: "#{node_ip}", auto_config:false 
-                                       #libvirt__network_name: "atomic-demo0", libvirt__dhcp_enabled: false
-       node.vm.provision "shell" do |s|
-         s.args = [node_index, node_ip, node.vm.hostname]
-         s.inline = <<-EOT
-	  echo Definining minion node $1 ip: $2 hostname: $3 
-          echo Fixing host manager bug as changing /etc/hosts file owner as root 
+       #
+       # virtualbox provider specific settings 
+       # network & second hd
+       #
+       node.vm.provider "virtualbox" do |vb|
+          # Add Second Drive
+          if ENV["VBOX_VM_PATH"]
+           vb_disk_path = ENV["VBOX_VM_PATH"] + :vm + "/" + node.vm.hostname + "-disk2" + ".vmdk"
+         else
+           vb_disk_path = Dir.pwd() + "/" + node.vm.hostname + "-disk2" + ".vmdk"
+         end
+         unless File.exist?(vb_disk_path )
+           vb.customize ['createhd', '--filename', vb_disk_path, '--size', 5 * 1024]
+         end
+         vb.customize ['storageattach', :id, '--storagectl','SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', vb_disk_path] 
+      end
+ 
+      #continue to common settings
+      # Add private network & do not configure it  
+      node.vm.network "private_network", ip: "#{node_ip}", auto_config:false ,virtualbox__intnet: "atomic-demo.com" , libvirt__network_name: "atomic-demo.com", libvirt__dhcp_enabled: false
+      node.vm.provision "fix-hostmanager-bug", type: "shell", run: "always" do |s|
+        s.inline = <<-EOT
           sudo restorecon /etc/hosts
           sudo chown root:root /etc/hosts
-          echo Copy ssh key and add to authorized_keys. All hosts will have the same key.
-          mkdir -p ~/.ssh
-          cp /var/vagrant/keys/id_rsa ~/.ssh/
-          cat /var/vagrant/keys/id_rsa.pub >>  ~/.ssh/authorized_keys
-          chmod -R 600 ~/.ssh/
-          echo "StrictHostKeyChecking no" >> /etc/ssh/ssh_config
-          echo Adding registry.access.redhat.com to docker registries
-	  sed -i -e "s/^# INSECURE_REGISTRY=.*/INSECURE_REGISTRY='--insecure-registry registry\.access\.redhat\.com:5000 '/" /etc/sysconfig/docker
-          systemctl restart docker 
-	  EOT
-       end
+          EOT
+      end
+        #,virtualbox__intnet: "atomic-demo.com", libvirt__network_name: "atomic-demo.com", libvirt__dhcp_enabled: false
+      # provision shell to conf network
+      node.vm.provision :shell , :path => "./scripts/fixNet.sh" , :args => [node_ip] 
+      node.vm.provision :shell , :path  => "./scripts/all.sh", :args => [node.vm.hostname,node_ip]
     end
   end  
 
-  #VAGRANT_ROOT = File.dirname(File.expand_path(__FILE__))
-  #file_to_disk = File.join(VAGRANT_ROOT, 'atomic_master_additional.vdi')
-  #Vagrant::Config.run do |config|
-  # config.vm.box = 'base'
-  # config.vm.customize ['createhd', '--filename', file_to_disk, '--size', 500 * 1024]
-  # config.vm.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', file_to_disk]
-  #end
-
-  config.vm.define "atomic-master" do |master|
+# Master Node
+  config.vm.define "atomic-master", primary:true do |master|
      master.vm.hostname = "atomic-master"
      master.hostmanager.aliases = %W(atomic-master.atomic-demo.com)
-     master.vm.network "private_network", ip: master_ip, auto_config:false
-           #libvirt__network_name: "atomic-demo0", libvirt__dhcp_enabled: false
-     master.vm.provision "shell" do |s|
-         s.args = [ master_ip, master.vm.hostname]
-         s.inline = <<-EOT
-	  echo Definining master node ip: $1 hostname: $2
-          echo Fixing host manager bug as changing /etc/hosts file owner as root 
+     #
+     # virtualbox provider specific settings 
+     # network & second hd
+     #
+     master.vm.provider "virtualbox" do |vb|
+          # Add Second Drive
+          if ENV["VBOX_VM_PATH"]
+           vb_disk_path = ENV["VBOX_VM_PATH"] + :vm + "/" + master.vm.hostname + "-disk2" + ".vmdk"
+         else
+           vb_disk_path = Dir.pwd() + "/" + master.vm.hostname + "-disk2" + ".vmdk"
+         end
+         unless File.exist?(vb_disk_path )
+           vb.customize ['createhd', '--filename', vb_disk_path, '--size', 5 * 1024]
+         end
+         vb.customize ['storageattach', :id, '--storagectl','SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', vb_disk_path] 
+      end
+      #continue to common settings
+       # Add private network & do not configure it  
+      master.vm.network "private_network", ip: "#{master_ip}", auto_config:false ,virtualbox__intnet: "atomic-demo.com", libvirt__network_name: "atomic-demo.com", libvirt__dhcp_enabled: false
+      master.vm.provision "fix-hostmanager-bug", type: "shell", run: "always" do |s|
+        s.inline = <<-EOT
           sudo restorecon /etc/hosts
           sudo chown root:root /etc/hosts
-          echo Copy ssh key and add to authorized_keys. All hosts will have the same key.
-          mkdir -p ~/.ssh
-          cp /var/vagrant/keys/id_rsa ~/.ssh/
-          cat /var/vagrant/keys/id_rsa.pub >>  ~/.ssh/authorized_keys
-          chmod -R 600 ~/.ssh/
-          echo "StrictHostKeyChecking no" >> /etc/ssh/ssh_config
-          echo Adding registry.access.redhat.com to docker registries
-	  sed -i -e "s/^# INSECURE_REGISTRY=.*/INSECURE_REGISTRY='--insecure-registry registry\.access\.redhat\.com:5000 '/" /etc/sysconfig/docker
-          systemctl restart docker
-	  EOT
-     end
+          EOT
+      end
+      # provision shell to conf network
+      master.vm.provision :shell , :path => "./scripts/fixNet.sh" , :args => [master_ip] 
+      master.vm.provision :shell , :path => "./scripts/all.sh", :args => [master.vm.hostname,master_ip]
+      master.vm.provision :shell , :path => "./scripts/master.sh", :args => [minion_names_str]
   end
 end
