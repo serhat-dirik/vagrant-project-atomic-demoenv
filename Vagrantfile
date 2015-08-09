@@ -131,6 +131,7 @@ Vagrant.configure("2") do |config|
           sudo chown root:root /etc/hosts
           EOT
       end
+      node.vm.network "private_network", ip: "#{node_ip}", auto_config:false 
         #,virtualbox__intnet: "atomic-demo.com", libvirt__network_name: "atomic-demo.com", libvirt__dhcp_enabled: false
       # provision shell to conf network
       node.vm.provision :shell , :path => "./scripts/fixNet.sh" , :args => [node_ip] 
@@ -160,7 +161,7 @@ Vagrant.configure("2") do |config|
       end
       #continue to common settings
        # Add private network & do not configure it  
-      master.vm.network "private_network", ip: "#{master_ip}", auto_config:false ,virtualbox__intnet: "atomic-demo.com", libvirt__network_name: "atomic-demo.com", libvirt__dhcp_enabled: false
+      master.vm.network "private_network", ip: "#{master_ip}", auto_config:false,virtualbox__intnet: "atomic-demo.com", libvirt__network_name: "atomic-demo.com", libvirt__dhcp_enabled: false
       master.vm.provision "fix-hostmanager-bug", type: "shell", run: "always" do |s|
         s.inline = <<-EOT
           sudo restorecon /etc/hosts
