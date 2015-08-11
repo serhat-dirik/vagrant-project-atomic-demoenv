@@ -69,6 +69,7 @@ Vagrant.configure("2") do |config|
 #
   config.vm.box = "atomic"
   config.vm.box_check_update = false
+
 # Default synchronization settings cause problems on windows + virtualbox combination
   config.vm.synced_folder './', '/var/vagrant', disabled:true
 ########################################################################################### 
@@ -123,16 +124,15 @@ Vagrant.configure("2") do |config|
       end
  
       #continue to common settings
-      # Add private network & do not configure it  
-      node.vm.network "private_network", ip: "#{node_ip}", auto_config:false ,virtualbox__intnet: "atomic-demo.com" , libvirt__network_name: "atomic-demo.com", libvirt__dhcp_enabled: false
+
       node.vm.provision "fix-hostmanager-bug", type: "shell", run: "always" do |s|
         s.inline = <<-EOT
           sudo restorecon /etc/hosts
           sudo chown root:root /etc/hosts
           EOT
       end
-      node.vm.network "private_network", ip: "#{node_ip}", auto_config:false 
-        #,virtualbox__intnet: "atomic-demo.com", libvirt__network_name: "atomic-demo.com", libvirt__dhcp_enabled: false
+      # Add private network & do not configure it  
+      node.vm.network "private_network", ip: "#{node_ip}", auto_config:false ,virtualbox__intnet: "atomic-demo.com" , libvirt__network_name: "atomic-demo.com", libvirt__dhcp_enabled: false
       # provision shell to conf network
       node.vm.provision :shell , :path => "./scripts/fixNet.sh" , :args => [node_ip] 
       node.vm.provision :shell , :path  => "./scripts/all.sh", :args => [node.vm.hostname,node_ip]

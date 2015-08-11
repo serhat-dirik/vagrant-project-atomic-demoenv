@@ -8,9 +8,11 @@ _HOST_IP=$1
 
 echo Configuring network devices...
 sudo -i
-systemctl stop network  > /dev/null 2>&1 
+
 ndevice1="$(nmcli device status|grep ethernet|sed -n '1p' | cut -d' ' -f1)"
 ndevice2="$(nmcli device status|grep ethernet|sed -n '2p' | cut -d' ' -f1)"
+systemctl stop network  > /dev/null 2>&1 
+systemctl stop NetworkManager  > /dev/null 2>&1 
 rm -f /etc/sysconfig/network-scripts/ifcfg-eth* > /dev/null 2
 cat > /etc/sysconfig/network-scripts/ifcfg-$ndevice1 << EOF
 DEVICE="$ndevice1"
@@ -30,4 +32,5 @@ DEVICE=$ndevice2
 PEERDNS=no
 EOF
 systemctl start network &
+systemctl start NetworkManager &
 echo Done!
