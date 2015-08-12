@@ -72,12 +72,12 @@ sed -i -e "s/^KUBELET_HOSTNAME=.*/KUBELET_HOSTNAME=\"--hostname_override=192\.16
 sed -i -e "s/^KUBELET_API_SERVER=.*/KUBELET_API_SERVER=\"--api_servers=http:\/\/192\.168\.133\.2:8080\"/" /etc/kubernetes/kubelet
 sed -i -e "s/^KUBE_MASTER=.*/KUBE_MASTER=\"--master=http:\/\/192\.168\.133\.2:8080\"/" /etc/kubernetes/config
 sed -i -e "s/^KUBE_PROXY_ARGS=.*/KUBE_PROXY_ARGS=\"--master=http:\/\/192\.168\.133\.2:8080\"/" /etc/kubernetes/proxy
+
 #enable services
 for SERVICES in etcd kube-apiserver kube-controller-manager kube-scheduler; do 
     systemctl enable $SERVICES
     systemctl restart $SERVICES
 done
-
 # Flannel Network 
 echo Configuring Flannel
 # Prepare config
@@ -95,7 +95,31 @@ curl -L http://localhost:2379/v2/keys/coreos.com/network/config -XPUT --data-url
 #Fix Flannel settings
 sed -i -e "s/^FLANNEL_ETCD=.*/FLANNEL_ETCD=\"http:\/\/192\.168\.133\.2:4001\"/" /etc/sysconfig/flanneld
 sed -i -e "s/^FLANNEL_ETCD_KEY==.*/FLANNEL_ETCD_KEY==\"coreos\.com\/network\"/" /etc/sysconfig/flanneld
+
+#enable services
 systemctl enable flanneld
+#Cocpit
+echo Installing Cocpit
+atomic install fedora/cockpitws
+
+cat > /etc/systemd/system/cockpitws.service << EOF
+[Unit]
+Description=Cockpit Web Interface
+Requires=docker.service
+After=docker.service
+
+[Service]
+Restart=on-failure
+RestartSec=10
+ExecStart=/usr/bin/docker run --rm --privileged --pid host -v /:/host --name %p fedora/cockpitws /container/atomic-run --local-ssh
+ExecStop=-/usr/bin/docker stop -t 2 %p
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl enable cockpitws.service  
+
 #complete
 echo Master configuration is done! Restarting the system
 systemctl reboot
