@@ -4,6 +4,7 @@
 # Params
 #   $1: ip
 #
+echo Executing fixNet.sh
 _HOST_IP=$1
 
 echo Configuring network devices...
@@ -31,6 +32,8 @@ DEVICE=$ndevice2
 
 PEERDNS=no
 EOF
+systemctl enable network 
+systemctl enable NetworkManager 
 systemctl start network &
 systemctl start NetworkManager &
 echo Done!

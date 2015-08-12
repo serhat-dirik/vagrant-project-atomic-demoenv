@@ -7,7 +7,7 @@
 _HOST_NAME=$1
 _HOST_IP=$2
 #################
-sudo -i
+echo Executing all.sh
 echo chaning root password as redhat1!
 echo "redhat1!" | passwd root --stdin
 
@@ -24,7 +24,7 @@ echo StrictHostKeyChecking no >> /etc/ssh/ssh_config
 # Setup hostnames
 hostnamectl --static set-hostname $_HOST_NAME.atomic-demo.com
 
-
 echo Adding registry.access.redhat.com to docker registries
 sed -i -e "s/^# INSECURE_REGISTRY=.*/INSECURE_REGISTRY='--insecure-registry registry\.access\.redhat\.com:5000 '/" /etc/sysconfig/docker
-systemctl restart docker &
+#echo Restarting docker service...
+#systemctl restart docker 

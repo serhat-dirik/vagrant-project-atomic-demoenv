@@ -1,7 +1,6 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
-# Installs atomic hosts as one master node and several minion nodes as specified in NUM_MINIONS environment variable. If NUM_MINIONS variable is not specified
-# installs only two minion nodes. This configuration requires "atomic" box is installed in prior to execute this config scripts. The tested box is fedora22 atomic
+# Installs atomic hosts as one master node and two minion nodes. This configuration requires "atomic" box is installed in prior to execute this config scripts. The tested box is fedora22 atomic
 # box, but feel free to execute this with rhel atomic or centos atomic as well. 
 # 
 # 192.168.133.2     atomic-master.atomic-demo.com atomic-master                                                        
@@ -39,7 +38,7 @@ puts "Detected Host OS %s" % [os.to_s]
 
 Vagrant.configure("2") do |config|
 # The number of minions to provision.
-  num_minions = (ENV['NUM_MINIONS'] || 2).to_i
+  num_minions = (2).to_i
 # IP configuration
   master_ip = "192.168.133.2"
   minion_ip_base = "192.168.133."
@@ -98,6 +97,41 @@ Vagrant.configure("2") do |config|
   end
 
 ###########################################################################################
+# Master Node
+  config.vm.define "atomic-master", primary:true do |master|
+     master.vm.hostname = "atomic-master"
+     master.hostmanager.aliases = %W(atomic-master.atomic-demo.com)
+     #
+     # virtualbox provider specific settings 
+     # network & second hd
+     #
+     master.vm.provider "virtualbox" do |vb|
+          # Add Second Drive
+          if ENV["VBOX_VM_PATH"]
+           vb_disk_path = ENV["VBOX_VM_PATH"] + :vm + "/" + master.vm.hostname + "-disk2" + ".vmdk"
+         else
+           vb_disk_path = Dir.pwd() + "/" + master.vm.hostname + "-disk2" + ".vmdk"
+         end
+         unless File.exist?(vb_disk_path )
+           vb.customize ['createhd', '--filename', vb_disk_path, '--size', 5 * 1024]
+         end
+         vb.customize ['storageattach', :id, '--storagectl','SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', vb_disk_path] 
+      end
+      #continue to common settings
+       # Add private network & do not configure it  
+      master.vm.network "private_network", ip: "#{master_ip}", auto_config:false,virtualbox__intnet: "atomic-demo.com", libvirt__network_name: "atomic-demo.com", libvirt__dhcp_enabled: false
+      master.vm.provision "fix-hostmanager-bug", type: "shell", run: "always" do |s|
+        s.inline = <<-EOT
+          sudo restorecon /etc/hosts
+          sudo chown root:root /etc/hosts
+          EOT
+      end
+      # provision shell to conf network
+      master.vm.provision :shell , :path => "./scripts/fixNet.sh" , :args => [master_ip] 
+      master.vm.provision :shell , :path => "./scripts/all.sh", :args => [master.vm.hostname,master_ip]
+      master.vm.provision :shell , :path => "./scripts/master.sh", :args => [minion_names_str]
+  end
+
 # Minion nodes
   num_minions.times do |n|
      config.vm.define "atomic-minion#{n+1}" do |node|
@@ -136,41 +170,9 @@ Vagrant.configure("2") do |config|
       # provision shell to conf network
       node.vm.provision :shell , :path => "./scripts/fixNet.sh" , :args => [node_ip] 
       node.vm.provision :shell , :path  => "./scripts/all.sh", :args => [node.vm.hostname,node_ip]
+      node.vm.provision :shell , :path  => "./scripts/nodes.sh", :args => [node.vm.hostname,node_ip]
     end
   end  
 
-# Master Node
-  config.vm.define "atomic-master", primary:true do |master|
-     master.vm.hostname = "atomic-master"
-     master.hostmanager.aliases = %W(atomic-master.atomic-demo.com)
-     #
-     # virtualbox provider specific settings 
-     # network & second hd
-     #
-     master.vm.provider "virtualbox" do |vb|
-          # Add Second Drive
-          if ENV["VBOX_VM_PATH"]
-           vb_disk_path = ENV["VBOX_VM_PATH"] + :vm + "/" + master.vm.hostname + "-disk2" + ".vmdk"
-         else
-           vb_disk_path = Dir.pwd() + "/" + master.vm.hostname + "-disk2" + ".vmdk"
-         end
-         unless File.exist?(vb_disk_path )
-           vb.customize ['createhd', '--filename', vb_disk_path, '--size', 5 * 1024]
-         end
-         vb.customize ['storageattach', :id, '--storagectl','SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', vb_disk_path] 
-      end
-      #continue to common settings
-       # Add private network & do not configure it  
-      master.vm.network "private_network", ip: "#{master_ip}", auto_config:false,virtualbox__intnet: "atomic-demo.com", libvirt__network_name: "atomic-demo.com", libvirt__dhcp_enabled: false
-      master.vm.provision "fix-hostmanager-bug", type: "shell", run: "always" do |s|
-        s.inline = <<-EOT
-          sudo restorecon /etc/hosts
-          sudo chown root:root /etc/hosts
-          EOT
-      end
-      # provision shell to conf network
-      master.vm.provision :shell , :path => "./scripts/fixNet.sh" , :args => [master_ip] 
-      master.vm.provision :shell , :path => "./scripts/all.sh", :args => [master.vm.hostname,master_ip]
-      master.vm.provision :shell , :path => "./scripts/master.sh", :args => [minion_names_str]
-  end
+
 end
