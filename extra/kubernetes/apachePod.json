@@ -1,0 +1,31 @@
+{
+    "apiVersion": "v1beta1",
+    "desiredState": {
+        "manifest": {
+            "containers": [
+                {
+                    "image": "fedora/apache",
+                    "name": "my-fedora-apache",
+                    "ports": [
+                        {
+                            "containerPort": 80,
+                            "protocol": "TCP"
+                        }
+                    ]
+                }
+            ],
+            "id": "apache",
+            "restartPolicy": {
+                "always": {}
+            },
+            "version": "v1beta1",
+            "volumes": null
+        }
+    },
+    "id": "apache",
+    "kind": "Pod",
+    "labels": {
+        "name": "apache"
+    },
+    "namespace": "default"
+}

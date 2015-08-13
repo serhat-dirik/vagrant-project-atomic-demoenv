@@ -58,6 +58,7 @@ echo KUBE_ETCD_SERVERS="--etcd_servers=http://192.168.133.2:2379" >> /etc/kubern
 # Apiserver service configuration , listen on all IP addresses
 #sed -i -e "s/^KUBE_API_ADDRESS=.*/KUBE_API_ADDRESS=\"--address=192\.168\.133\.2 --insecure_bind_address=127\.0\.0\.1\"/" /etc/kubernetes/apiserver
 sed -i -e "s/^KUBE_API_ADDRESS=.*/KUBE_API_ADDRESS=\"--address=0\.0\.0\.0\"/" /etc/kubernetes/apiserver
+sed -i -e "s/^KUBE_API_ARGS=.*/KUBE_API_ARGS=\"--runtime_config=api\/v1beta3\"/" /etc/kubernetes/apiserver
 # --insecure_bind_address=127\.0\.0\.1
 #force kube-apiserver tp start after network server & order kube master services
 sed "/Documentation=.*/a After=network\.target " /usr/lib/systemd/system/kube-apiserver.service > /etc/systemd/system/kube-apiserver.service
@@ -98,8 +99,23 @@ sed -i -e "s/^FLANNEL_ETCD_KEY==.*/FLANNEL_ETCD_KEY==\"coreos\.com\/network\"/" 
 
 #enable services
 systemctl enable flanneld
+#rhel7-tools container
+atomic install registry.access.redhat.com/rhel7/rhel-tools
 #Cocpit
 echo Installing Cocpit
+#download src for extra plugins 
+sudo -i
+cd /root
+curl -LOk https://github.com/cockpit-project/cockpit/archive/master.zip
+#Extract 
+atomic run rhel7/rhel-tools unzip /host/root/master.zip -d /host/root
+rm /root/master.zip
+#source in /root/cocpit-master 
+mkdir -p /root/.local/share/cockpit
+cd  /root/.local/share/cockpit
+ln -s /root/cockpit-master/pkg/* .
+cd ~ 
+#install container 
 atomic install fedora/cockpitws
 
 cat > /etc/systemd/system/cockpitws.service << EOF

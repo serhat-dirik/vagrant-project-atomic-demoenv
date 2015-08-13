@@ -1,0 +1,41 @@
+{
+    "apiVersion": "v1beta1",
+    "desiredState": {
+        "podTemplate": {
+            "desiredState": {
+                "manifest": {
+                    "containers": [
+                        {
+                            "image": "fedora/apache",
+                            "name": "my-fedora-apache",
+                            "ports": [
+                                {
+                                    "containerPort": 80,
+                                    "protocol": "TCP"
+                                }
+                            ]
+                        }
+                    ],
+                    "id": "apache",
+                    "restartPolicy": {
+                        "always": {}
+                    },
+                    "version": "v1beta1",
+                    "volumes": null
+                }
+            },
+            "labels": {
+                "name": "apache"
+            }
+        },
+        "replicaSelector": {
+            "name": "apache"
+        },
+        "replicas": 1
+    },
+    "id": "apache-controller",
+    "kind": "ReplicationController",
+    "labels": {
+        "name": "apache"
+    }
+}
