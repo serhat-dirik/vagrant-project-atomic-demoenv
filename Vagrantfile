@@ -1,5 +1,6 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
+# Maintained By Serhat Dirik serhat@redhat.com
 # Installs atomic hosts as one master node and two minion nodes. This configuration requires "atomic" box is installed in prior to execute this config scripts. The tested box is fedora22 atomic
 # box, but feel free to execute this with rhel atomic or centos atomic as well. 
 # 

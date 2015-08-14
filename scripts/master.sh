@@ -100,24 +100,31 @@ sed -i -e "s/^FLANNEL_ETCD_KEY==.*/FLANNEL_ETCD_KEY==\"coreos\.com\/network\"/" 
 #enable services
 systemctl enable flanneld
 #rhel7-tools container
-atomic install registry.access.redhat.com/rhel7/rhel-tools
+#echo downloading and installing rhel-tools
+#atomic install registry.access.redhat.com/rhel7/rhel-tools
+#<<EOF
+#atomic run --name rhel-tools rhel7/rhel-tools
+#exit
+#EOF
 #Cocpit
 echo Installing Cocpit
+#sudo -i
 #download src for extra plugins 
-sudo -i
-cd /root
-curl -LOk https://github.com/cockpit-project/cockpit/archive/master.zip
+#cd /root
+#echo Downloading cockpit plugin sources
+#curl -LOk https://github.com/cockpit-project/cockpit/archive/master.zip
 #Extract 
-atomic run rhel7/rhel-tools unzip /host/root/master.zip -d /host/root
-rm /root/master.zip
-#source in /root/cocpit-master 
-mkdir -p /root/.local/share/cockpit
-cd  /root/.local/share/cockpit
-ln -s /root/cockpit-master/pkg/* .
-cd ~ 
-#install container 
-atomic install fedora/cockpitws
+#echo Extracting cockpit plugin sources
+#atomic run rhel7/rhel-tools unzip /host/root/master.zip -d /host/root
 
+#source in /root/cocpit-master 
+#mkdir -p /root/.local/share/cockpit
+#cd  /root/.local/share/cockpit
+#ln -s /root/cockpit-master/pkg/* .
+#install container 
+echo Downloading and installing fedora/cockpitws container
+atomic install fedora/cockpitws
+echo Preparing cocpitws service 
 cat > /etc/systemd/system/cockpitws.service << EOF
 [Unit]
 Description=Cockpit Web Interface
