@@ -230,9 +230,9 @@ apache-controller-d8x09   172.16.60.3                                      192.1
 ```
 ### Known Issues  
 
-- Because of Vagrant does not guarantee that provisioning order of  hosts, it may complete provisioning of minions before the master. Therefore, minion services (kube-proxy, flanneld, kubelets, etcd) may not communicate the master services and simply fails. Simple todo is restarting minions for recovery.
+- Because of Vagrant does not guarantee that master host is proviisoned before minions, minion services (kube-proxy, flanneld, kubelets, etcd) may not communicate with the master services on initial startup and fails. Simple todo is restarting minions after master is started for recovery
 
-- Cocpit kubernetes plugin is not fully functional on this environment, but still enough to see what it's tend to. New version of project atomic vagrant boxes expected to work with kubernetes 1.0 and have a fully functional cocpit 
+- Cocpit kubernetes plugin is not fully functional on this environment, but still enough to see what it's tend to. New version of project atomic vagrant boxes expected to work with kubernetes 1.0 and have a fully functional cocpit
 
 ###Troubleshooting
 
