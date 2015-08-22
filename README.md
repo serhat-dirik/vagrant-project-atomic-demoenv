@@ -254,10 +254,10 @@ apache-controller-d8x09   172.16.60.3                                      192.1
    systemctl start $service_name
 ```
    Restart
-```
+
 ```bash
    systemctl restart $service_name
 ```
 ### Additonal Links
 - For a more detailed example, you can use [guest book](https://github.com/kubernetes/kubernetes/blob/master/examples/guestbook/README.md) example .
-- If you need a detailed learning source, James Read's [SA Training](https://github.com/jamesread/EMEA-SA2-Training/) is a good one and some examples that I used here is coming form there. 
+- If you need a detailed learning source, James Read's [SA Training](https://github.com/jamesread/EMEA-SA2-Training/) is a good one and some examples that I used here is coming form there.
