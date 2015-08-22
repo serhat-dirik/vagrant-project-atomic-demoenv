@@ -228,9 +228,11 @@ apache-controller-d8x09   172.16.60.3                                      192.1
                                         my-fedora-apache   fedora/apache                                               Running   51 seconds
 
 ```
- ### Known Issues  
+### Known Issues  
 
  Because of Vagrant does not guarantee that provisioning order of  hosts, it may complete provisioning of minions before the master. Therefore, minion services (kube-proxy, flanneld, kubelets, etcd) may not communicate the master services and simply fails. Simple todo is restarting minions for recovery.
+
+###Troubleshooting
 
  In the case you have experience any problems, please make sure that services below are up & running :
 
@@ -238,3 +240,21 @@ apache-controller-d8x09   172.16.60.3                                      192.1
   * docker etcd flanneld kupe-apiserver kube-controller-manager kube-scheduler
 * Minions
   * docker flanneld kubelet kube-proxy
+
+  How to check a service's status :
+```bash
+  systemctl status $service_name
+```
+   Detailed log watch:
+```bash
+   journalctl -u $service_name --full --no-pager
+```
+   How to start a service:
+```bash
+   systemctl start $service_name
+```
+   Restart
+```
+```bash
+   systemctl restart $service_name
+```
