@@ -109,7 +109,7 @@ I preferred to use Fedora Atomic image for this workshop instead of RHEL or Cent
 - Cocpit kubernetes plugin is not fully functional on this environment, but still enough to see what it's tend to. New version of project atomic vagrant boxes expected to work with kubernetes 1.0 and have a fully functional cocpit
 
 ### Upgrading Atomic Host
-   It's usualy recommended that you upgrade your os to the latest version as first step, but this time my recommendation is don't do it for this time. Kubernetes services  & configuration changing a lot and there is no guarantee that everything works after your upgrade.
+   It's usualy recommended that you upgrade your os to the latest version as first step, but this time my recommendation is don't do it for this time. Kubernetes services  & configuration changing a lot and there is no guarantee that everything works fine after your upgrade due to kubernetes api changes.
 
 ### Cockpit Kubernetes Plugin
    Oh yes, cockpit has a beatiful kubernetes plugin that you can manage & monitor your pods & services. Follow the steps below to install it
