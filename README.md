@@ -7,7 +7,8 @@ This project contains a demo environment setup for [project atomic](http://www.p
 ```
 
 ###Environment Information
-In this environment, you'll have 3 atomic hosts vm as one master node and two slave nodes (or minions as named in kubernetes). I preferred to use Fedora version of the atomic host to skip registration steps, but it's quite possible to use rhel or centos images instead. Host configurations are below:
+In this environment, you'll have 3 atomic hosts vm as one master node and two slave nodes (or minions as named in kubernetes). I preferred to use Fedora version of the atomic host to skip registration steps, but it's quite possible to use rhel or centos images instead. Host configurations:
+
 1. 1512 mb Mem
 2. 2 Core cpu
 3. I'm using fedora box and my box storage configuration is 41 GB Storage for docker pool + 3 GB for root. Depends on your atomic version choice, it may differ
@@ -24,11 +25,10 @@ You'll have two default users as root & vagrant for each host. Passwords are "re
 
 If everything is done properly, kubernetes should be up and running. Etcd, kubernetes apiserver, scheduler, controller manager are all running on the master node. Kubelet & proxy services should be up & running on minions as  well.
 
-A private docker registry installed on the master node, public registry is mirrored and ofcourse other nodes configured to use this private registry as a mirror.
+A private docker registry installed on the master node, public registry is mirrored and of course other nodes configured to use this private registry as a mirror.
 
-At last cockpit management & monitoring tool is also installed on the master node. You can access it on port 9090, so visit http://atomic-master:9090 to reach web console.
+At last cockpit management & monitoring tool is also installed on the master node. You can access it on port 9090, so visit http://atomic-master:9090 to reach it's web console.
 
-One last note about the environment is, libvirt & kvm (which are my favorite) let you access the private network from the host machine. On the other hand virtualbox does not let you to access it from your host machine. In order to access your provisioned guests from your host, you need to [forward required ports](http://cdn9.howtogeek.com/wp-content/uploads/2012/08/image323.png) first and please be careful to pick proper nic that used for private networking.
 
 ### Prerequisite: Vagrant
 You need Vagrant to install & setup our lab environment on your local machine. If it's not already installed, please go and install Vagrant on your machine as following the instructions at the [Vagrant web site](http://docs.vagrantup.com/v2/installation/index.html ). It's also recommended for you to walk through Vagrant [getting started guide](http://docs.vagrantup.com/v2/getting-started/index.html)  to make sure that your Vagrant installation is properly done.
@@ -99,8 +99,18 @@ I preferred to use Fedora Atomic image for this workshop instead of RHEL or Cent
 ```
   You should see two minions are in Ready state. If you see any one of them in "Not Ready" state, go and restart that host to fix that problem.
 
+### Known Issues  
+
+- Because of Vagrant does not guarantee that master host is proviisoned before minions, minion services (kube-proxy, flanneld, kubelets, etcd) may not communicate with the master services on initial startup and fails. Simple todo is restarting minions after master is started for recovery
+
+- Libvirt & kvm (which are my favorite) let you access the private network from the host machine. On the other hand virtualbox does not let you to access it from your host machine. In order to access your provisioned guests from your host, you need to [forward required ports](http://cdn9.howtogeek.com/wp-content/uploads/2012/08/image323.png) first and please be careful to pick proper nic that used for private networking.
+
+
+- Cocpit kubernetes plugin is not fully functional on this environment, but still enough to see what it's tend to. New version of project atomic vagrant boxes expected to work with kubernetes 1.0 and have a fully functional cocpit
+
 ### Upgrading Atomic Host
    It's usualy recommended that you upgrade your os to the latest version as first step, but this time my recommendation is don't do it for this time. Kubernetes services  & configuration changing a lot and there is no guarantee that everything works after your upgrade.
+
 ### Cockpit Kubernetes Plugin
    Oh yes, cockpit has a beatiful kubernetes plugin that you can manage & monitor your pods & services. Follow the steps below to install it
 
@@ -228,11 +238,6 @@ apache-controller-d8x09   172.16.60.3                                      192.1
                                         my-fedora-apache   fedora/apache                                               Running   51 seconds
 
 ```
-### Known Issues  
-
-- Because of Vagrant does not guarantee that master host is proviisoned before minions, minion services (kube-proxy, flanneld, kubelets, etcd) may not communicate with the master services on initial startup and fails. Simple todo is restarting minions after master is started for recovery
-
-- Cocpit kubernetes plugin is not fully functional on this environment, but still enough to see what it's tend to. New version of project atomic vagrant boxes expected to work with kubernetes 1.0 and have a fully functional cocpit
 
 ###Troubleshooting
 
