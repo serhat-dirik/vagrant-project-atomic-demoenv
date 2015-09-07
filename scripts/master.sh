@@ -8,10 +8,10 @@ ssh-keygen -f /root/.ssh/id_rsa -N ''
 cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys
 #in order to copy ssh key to nodes for passwordless ssh use the command below
 #for node in $_nodes; do ssh-copy-id root@$node ; done
-#Create a private registry & mirror public registry 
-echo Creating a private registry 
+#Create a private registry & mirror public registry
+echo Creating a private registry
 mkdir -p /var/lib/local-registry
-systemctl restart docker 
+systemctl restart docker
 
 docker pull docker.io/registry
 
@@ -25,7 +25,7 @@ docker create -p 5000:5000 \
 
 #change the SELinux context on the directory that docker created for our persistence volume
 chcon -Rvt svirt_sandbox_file_t /var/lib/local-registry
-#Create a service for local registry 
+#Create a service for local registry
 cat > /etc/systemd/system/local-registry.service << EOF
 [Unit]
 Description=Local Docker Mirror registry cache
@@ -41,7 +41,7 @@ ExecStop=-/usr/bin/docker stop -t 2 %p
 [Install]
 WantedBy=multi-user.target
 EOF
-echo Configuring local-registry service 
+echo Configuring local-registry service
 systemctl daemon-reload
 systemctl enable local-registry
 systemctl start local-registry
@@ -75,11 +75,11 @@ sed -i -e "s/^KUBE_MASTER=.*/KUBE_MASTER=\"--master=http:\/\/192\.168\.133\.2:80
 sed -i -e "s/^KUBE_PROXY_ARGS=.*/KUBE_PROXY_ARGS=\"--master=http:\/\/192\.168\.133\.2:8080\"/" /etc/kubernetes/proxy
 
 #enable services
-for SERVICES in etcd kube-apiserver kube-controller-manager kube-scheduler; do 
+for SERVICES in etcd kube-apiserver kube-controller-manager kube-scheduler; do
     systemctl enable $SERVICES
     systemctl restart $SERVICES
 done
-# Flannel Network 
+# Flannel Network
 echo Configuring Flannel
 # Prepare config
 cat > /tmp/flanneld-conf.json << EOF
@@ -91,7 +91,19 @@ cat > /tmp/flanneld-conf.json << EOF
   }
 }
 EOF
-#Push it to etcd
+
+if [ "`systemctl is-active etcd`" != "active" ]
+then
+  sleep 5
+fi
+
+if [ "`systemctl is-active etcd`" != "active" ]
+then
+ echo ERROR: Failed to start etcd service! This will effect flanneld service configuration! Fix it manually!
+ #exit 1 # terminate and indicate error 
+fi
+
+#Push keys to  etcd
 curl -L http://localhost:2379/v2/keys/coreos.com/network/config -XPUT --data-urlencode value@/tmp/flanneld-conf.json
 #Fix Flannel settings
 sed -i -e "s/^FLANNEL_ETCD=.*/FLANNEL_ETCD=\"http:\/\/192\.168\.133\.2:4001\"/" /etc/sysconfig/flanneld
@@ -109,22 +121,22 @@ systemctl enable flanneld
 #Cocpit
 echo Installing Cocpit
 #sudo -i
-#download src for extra plugins 
+#download src for extra plugins
 #cd /root
 #echo Downloading cockpit plugin sources
 #curl -LOk https://github.com/cockpit-project/cockpit/archive/master.zip
-#Extract 
+#Extract
 #echo Extracting cockpit plugin sources
 #atomic run rhel7/rhel-tools unzip /host/root/master.zip -d /host/root
 
-#source in /root/cocpit-master 
+#source in /root/cocpit-master
 #mkdir -p /root/.local/share/cockpit
 #cd  /root/.local/share/cockpit
 #ln -s /root/cockpit-master/pkg/* .
-#install container 
+#install container
 echo Downloading and installing fedora/cockpitws container
 atomic install fedora/cockpitws
-echo Preparing cocpitws service 
+echo Preparing cocpitws service
 cat > /etc/systemd/system/cockpitws.service << EOF
 [Unit]
 Description=Cockpit Web Interface
@@ -141,11 +153,8 @@ ExecStop=-/usr/bin/docker stop -t 2 %p
 WantedBy=multi-user.target
 EOF
 
-systemctl enable cockpitws.service  
+systemctl enable cockpitws.service
 
 #complete
 echo Master configuration is done! Restarting the system
 systemctl reboot
-
-
-

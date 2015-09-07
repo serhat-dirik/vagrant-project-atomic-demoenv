@@ -7,7 +7,7 @@ This project contains a demo environment setup for [project atomic](http://www.p
 ```
 
 ###Environment Information
-In this environment, you'll have 3 atomic hosts vm as one master node and two slave nodes (or minions as named in kubernetes). I preferred to use Fedora version of the atomic host to skip registration steps, but it's quite possible to use rhel or centos images instead. Host configurations:
+In this environment, you'll have 3 atomic hosts vm as one master node and two slave nodes (or minions as named in kubernetes). I preferred to use Fedora version of the atomic host to skip some registration steps on rhel, but it's quite possible to use rhel or centos images instead of fedora. Host configurations:
 
 1. 1512 mb Mem
 2. 2 Core cpu
@@ -23,15 +23,15 @@ On top of that that private network, there will be another overlay network (flan
 
 You'll have two default users as root & vagrant for each host. Passwords are "redhat1!" for root user and "vagrant" for vagrant user.
 
-If everything is done properly, kubernetes should be up and running. Etcd, kubernetes apiserver, scheduler, controller manager are all running on the master node. Kubelet & proxy services should be up & running on minions as  well.
+If everything is done properly, kubernetes related services should be up and running on both master and minions. Etcd, kubernetes apiserver, scheduler, controller manager, flanneld and docker services are running on the master node. Kubelet, kube proxy, flanneld and docker services should be also up & running on minions as  well.
 
-A private docker registry installed on the master node, public registry is mirrored and of course other nodes configured to use this private registry as a mirror.
+A private docker registry installed on the master node, public docker registry is mirrored and of course other nodes configured to use this private registry as a mirror.
 
 At last cockpit management & monitoring tool is also installed on the master node. You can access it on port 9090, so visit http://atomic-master:9090 to reach it's web console.
 
 
 ### Prerequisite: Vagrant
-You need Vagrant to install & setup our lab environment on your local machine. If it's not already installed, please go and install Vagrant on your machine as following the instructions at the [Vagrant web site](http://docs.vagrantup.com/v2/installation/index.html ). It's also recommended for you to walk through Vagrant [getting started guide](http://docs.vagrantup.com/v2/getting-started/index.html)  to make sure that your Vagrant installation is properly done.
+You need Vagrant to install & setup our demo environment on your local machine. If it's not already installed, please go and install Vagrant on your machine as following the instructions at the [Vagrant web site](http://docs.vagrantup.com/v2/installation/index.html ). It's also recommended for you to walk through Vagrant [getting started guide](http://docs.vagrantup.com/v2/getting-started/index.html)  to make sure that your Vagrant installation is properly done.
 
 After you've an up & running Vagrant instance on your machine, you'll need to install couple of vagrant plugins :
 
@@ -73,25 +73,82 @@ I preferred to use Fedora Atomic image for this workshop instead of RHEL or Cent
 
    If you're lucky enough, you should have 3 hosts vm up & running on your local machine.
 
-### Validation & SSH Keys Installation
+### Validation Of Hosts & SSH Keys Installation
 
    Connect to master host using ssh .
 
 ```
   # vagrant ssh atomic-master
+  ...
+  [vagrant@atomic-master]$ sudo -i
 ```
-   Copy ssh key on master on to others for passwordless ssh connection between hosts.
-
+Check the services on the master node :
+```bash
+ss -tulnp | grep -E "(kube)|(etcd)"
 ```
-[vagrant@atomic-master]$ sudo -i
+```
+tcp    LISTEN     0      128            127.0.0.1:7001                  *:*      users:(("etcd",pid=1429,fd=5))
+tcp    LISTEN     0      128            127.0.0.1:10251                 *:*      users:(("kube-scheduler",pid=1512,fd=3))
+tcp    LISTEN     0      128            127.0.0.1:10252                 *:*      users:(("kube-controller",pid=1485,fd=3))
+tcp    LISTEN     0      128            127.0.0.1:2380                  *:*      users:(("etcd",pid=1429,fd=3))
+tcp    LISTEN     0      128                   :::4001                 :::*      users:(("etcd",pid=1429,fd=7))
+tcp    LISTEN     0      128                   :::7080                 :::*      users:(("kube-apiserver",pid=1455,fd=5))
+tcp    LISTEN     0      128                   :::6443                 :::*      users:(("kube-apiserver",pid=1455,fd=27))
+tcp    LISTEN     0      128                   :::2379                 :::*      users:(("etcd",pid=1429,fd=6))
+tcp    LISTEN     0      128                   :::8080                 :::*      users:(("kube-apiserver",pid=1455,fd=6))
+```
+ On a healty startup, you should see etcd , apiserver , scheduler, controller manager, flanneld and docker services are all up & running. If its not for any reason, restart your services with the command below
 
-#for node in atomic-minion1 atomic-minion2; do ssh-copy-id root@$node ; done
+ ```bash
+ for SERVICE in etcd kube-apiserver kube-controller-manager kube-scheduler docker flanneld; do
+    systemctl restart $SERVICE
+    systemctl enable $SERVICE
+    systemctl status $SERVICE
+done
+```
+If you have trouble to get started any of those services above, use ```journalctl``` to see log details.
+```bash
+journalctl -u $servicename --full --no-pager
+```
+
+>flanneld service (overlay network service for kubernetes) requires configuration is pushed to api server. Check if it's there with command ```curl -L http://localhost:2379/v2/keys/coreos.com/network/config``` . If the key is not inserted to etcd for some reason, check ```
+master.sh``` script in the project to find out how to insert that key into etcd.
+
+Copy ssh key on master on to others for passwordless ssh connection between hosts.
+
+```bash
+for node in atomic-minion1 atomic-minion2; do ssh-copy-id root@$node ; done
 ```
   You root password is ```redhat1!```. After completion of ssh id copy process, you can check passwordless connection
 
+```bash
+ssh root@atomic-minion1 'echo $(hostname)'
+...
+atomic-minion1.atomic-demo.com
 ```
- # ssh root@atomic-minion1
+  Now check if required services are active on nodes :
+
+```bash
+
+for node in atomic-minion1 atomic-minion2; do ssh root@$node 'for SERVICE in kube-proxy.service kubelet.service flanneld docker; do echo is $SERVICE active on $(hostname) : $(systemctl is-active $SERVICE);  done' ; done
+
 ```
+```
+is kube-proxy.service active on atomic-minion1.atomic-demo.com : active
+is kubelet.service active on atomic-minion1.atomic-demo.com : active
+is flanneld active on atomic-minion1.atomic-demo.com : active
+is docker active on atomic-minion1.atomic-demo.com : active
+is kube-proxy.service active on atomic-minion2.atomic-demo.com : active
+is kubelet.service active on atomic-minion2.atomic-demo.com : active
+is flanneld active on atomic-minion2.atomic-demo.com : active
+is docker active on atomic-minion2.atomic-demo.com : active
+```
+  If you see services are not running on nodes, use the command below to restart and enable those services :
+
+```bash
+for node in atomic-minion1 atomic-minion2; do ssh root@$node 'for SERVICE in docker kube-proxy.service kubelet.service flanneld docker; do echo $(hostname);systemctl restart $SERVICE; systemctl enable $SERVICE; systemctl status $SERVICE; done' ; done
+```
+
 
   Check if kubernetes nodes are active
 ```
@@ -101,7 +158,7 @@ I preferred to use Fedora Atomic image for this workshop instead of RHEL or Cent
 
 ### Known Issues  
 
-- Because of Vagrant does not guarantee that master host is proviisoned before minions, minion services (kube-proxy, flanneld, kubelets, etcd) may not communicate with the master services on initial startup and fails. Simple todo is restarting minions after master is started for recovery
+- Because of Vagrant does not guarantee that master host is provisioned before nodes, node services (kube-proxy, flanneld, kubelet) may not communicate with the master services on initial startup and fails. Simple todo is restarting nodes after master is started for recovery
 
 - Libvirt & kvm (which are my favorite) let you access the private network from the host machine. On the other hand virtualbox does not let you to access it from your host machine. In order to access your provisioned guests from your host, you need to [forward required ports](http://cdn9.howtogeek.com/wp-content/uploads/2012/08/image323.png) first and please be careful to pick proper nic that used for private networking.
 
@@ -123,7 +180,7 @@ I preferred to use Fedora Atomic image for this workshop instead of RHEL or Cent
  ...
 ```
 You should see cockpitws service is running
-Open a browser on your host and connect http://atomic-master1:9090 (If you're using virtualbox, than forward 9090 port of atomic-master to a local host port first and use that local port to connect). On the login page use ```root``` user name and ```redhat1!``` password. Use it for a while to get familiar your self. Go to Dashboard tab and add ```atomic-minion1.atomic-demo.com``` and ```atomic-minion2.atomic-demo.com``` to cockpit. You'll suddenly see that cockpit is collecting data from those hosts and it's possible to pick and manage those hosts as well.
+Open a browser on your host and connect http://atomic-master:9090 (If you're using virtualbox, than forward 9090 port of atomic-master to a local host port first and use that local port to connect). On the login page use ```root``` user name and ```redhat1!``` password. Use it for a while to get familiar your self. Go to Dashboard tab and add ```atomic-minion1.atomic-demo.com``` and ```atomic-minion2.atomic-demo.com``` to cockpit. You'll suddenly see that cockpit is collecting data from those hosts and it's possible to pick and manage those hosts as well.
 
 2. Go back to console again. Download cockpit source code to access plugin sources:
 ```
@@ -138,6 +195,8 @@ Open a browser on your host and connect http://atomic-master1:9090 (If you're us
 4. The container must be running before we do anything with it, so start it first, examine it and exit.
 ```
 # atomic run --name rhel-tools rhel7/rhel-tools
+...
+#exit
 ```
 5. Now extract the cockpit source package
 ``` /
