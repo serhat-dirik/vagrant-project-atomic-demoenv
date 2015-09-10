@@ -50,7 +50,7 @@ After you've an up & running Vagrant instance on your machine, you'll need to in
 I preferred to use Fedora Atomic image for this workshop instead of RHEL or CentOS Atomic.The reason for that is eliminating some required subscription steps in RHEL Atomic.
   You can download the latest version of Fedora Atomic Vagrant box file from the [Fedora project download site](https://getfedora.org/cloud/download/atomic.html) or simply skip this step and start vagrant. It will download required box image for you from predefined  url.
 
->* If you like to test RHEL Atomic, you can find it on [Red Hat customer site](https://access.redhat.com/downloads/content/271/ver=/rhel---7/7.1.1/x86_64/product-downloads).  RHEL Atomic doesn't have a Vagrant box definition by default, you'll need to download appropriate vm image and convert it to a Vagrant Box first.
+>* If you like to test RHEL Atomic, you can find it on [Red Hat customer site](https://access.redhat.com/downloads/content/293/ver=1/rhel---7/1.0.1/x86_64/product-downloads).  RHEL Atomic Vagrant box image can be found under "Container Development Kit" downloadables.
 
    Next Step is adding that downloaded box to vagrant. Please notice that I'm using `atomic` as it's name, if you use another name, vagrant will try to download predefined box and add it as `atomic`.
 
@@ -100,7 +100,7 @@ tcp    LISTEN     0      128                   :::8080                 :::*     
  On a healty startup, you should see etcd , apiserver , scheduler, controller manager, flanneld and docker services are all up & running. If its not for any reason, restart your services with the command below
 
  ```bash
- for SERVICE in etcd kube-apiserver kube-controller-manager kube-scheduler docker flanneld; do
+for SERVICE in etcd kube-apiserver kube-controller-manager kube-scheduler docker flanneld; do
     systemctl restart $SERVICE
     systemctl enable $SERVICE
     systemctl status $SERVICE
@@ -236,9 +236,7 @@ Open a browser on your host and connect http://atomic-master:9090 (If you're usi
 ```
 # kubectl get pods
 POD       IP        CONTAINER(S)       IMAGE(S)        HOST             LABELS        STATUS    CREATED     MESSAGE
-apache                                                 192.168.133.3/   name=apache   Pending   6 seconds
-                    my-fedora-apache   fedora/apache
-
+apache              my-fedora-apache   fedora/apache   192.168.133.3/   name=apache   Pending   6 seconds
 ```
    It's probably take some time to pull required containers and run. For more detailes use can watch system logs
 ```
@@ -326,4 +324,4 @@ apache-controller-d8x09   172.16.60.3                                      192.1
 ```
 ### Additonal Links
 - For a more detailed example, you can use [guest book](https://github.com/kubernetes/kubernetes/blob/master/examples/guestbook/README.md) example .
-- If you need a detailed learning source, James Read's [SA Training](https://github.com/jamesread/EMEA-SA2-Training/) is a good one and some examples that I used here is coming form there.
+- If you need a detailed learning source, Scott Collier's [SA Training](https://github.com/scollier/SATraining) is a good one and some examples that I used here is coming from there.
