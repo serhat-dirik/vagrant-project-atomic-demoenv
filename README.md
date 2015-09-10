@@ -68,6 +68,8 @@ I preferred to use Fedora Atomic image for this workshop instead of RHEL or Cent
    Now at this step all you need to do is starting vagrant
 
 ```
+# vagrant up atomic-master
+...
 # vagrant up
 ```
 
@@ -158,7 +160,7 @@ for node in atomic-minion1 atomic-minion2; do ssh root@$node 'for SERVICE in doc
 
 ### Known Issues  
 
-- Because of Vagrant does not guarantee that master host is provisioned before nodes, node services (kube-proxy, flanneld, kubelet) may not communicate with the master services on initial startup and fails. Simple todo is restarting nodes after master is started for recovery
+- Because of Vagrant does not guarantee that master host is provisioned before nodes, node services (kube-proxy, flanneld, kubelet) may not communicate with the master services on initial startup. Simple todo is restarting nodes after master is started for recovery or start atomic-master first on initial startup.
 
 - Libvirt & kvm (which are my favorite) let you access the private network from the host machine. On the other hand virtualbox does not let you to access it from your host machine. In order to access your provisioned guests from your host, you need to [forward required ports](http://cdn9.howtogeek.com/wp-content/uploads/2012/08/image323.png) first and please be careful to pick proper nic that used for private networking.
 
